@@ -39,7 +39,7 @@ def setup():
         print("Assicurati che Antigravity sia installato e avviato almeno una volta.")
         return
 
-    # 4. Aggiornamento configurazione
+    # 4. Aggiornamento configurazione MCP
     try:
         with open(config_path, "r") as f:
             content = f.read().strip()
@@ -50,7 +50,6 @@ def setup():
     if "mcpServers" not in config:
         config["mcpServers"] = {}
 
-    # Configurazione del server con percorsi assoluti rilevati
     config["mcpServers"]["external-llms"] = {
         "command": str(python_exe).replace("\\", "/"),
         "args": [str(current_dir / "server.py").replace("\\", "/")],
@@ -62,8 +61,27 @@ def setup():
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
 
-    print(f"\n✅ Configurazione completata!")
-    print(f"Plugin installato correttamente in Antigravity.")
+    # 5. Installazione Estensione Status Bar
+    print("\n--- Installazione Estensione Status Bar ---")
+    ext_src = current_dir / "mcp-statusbar-extension"
+    ext_dest_root = home / ".gemini" / "antigravity" / "extensions"
+    ext_dest = ext_dest_root / "mcp-quota-monitor"
+
+    try:
+        if not ext_dest_root.exists():
+            ext_dest_root.mkdir(parents=True)
+        
+        import shutil
+        if ext_dest.exists():
+            shutil.rmtree(ext_dest)
+        
+        shutil.copytree(ext_src, ext_dest)
+        print(f"Estensione copiata in: {ext_dest}")
+    except Exception as e:
+        print(f"Errore durante l'installazione dell'estensione UI: {e}")
+
+    print(f"\n✅ Installazione e configurazione completate!")
+    print(f"Il plugin e l'estensione status bar sono stati configurati.")
     print(f"Percorso config aggiornato: {config_path}")
     print("\n--- Prossimi Passi ---")
     print("1. Riavvia Antigravity.")

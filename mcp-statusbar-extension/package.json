@@ -1,0 +1,19 @@
+{
+    "name": "mcp-quota-monitor",
+    "displayName": "MCP Quota Monitor",
+    "description": "Shows MCP LLM quota and model in the status bar",
+    "version": "1.0.0",
+    "publisher": "su8z3r0",
+    "engines": {
+        "vscode": "^1.75.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "main": "./extension.js",
+    "contributes": {},
+    "scripts": {}
+}

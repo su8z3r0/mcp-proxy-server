@@ -16,48 +16,23 @@ from pathlib import Path
 # Inizializza il server MCP
 mcp = FastMCP("External-LLM-Proxy")
 
-# Percorso Cockpit per Status Bar
-COCKPIT_DIR = Path.home() / ".antigravity_cockpit" / "cache" / "quota_api_v1_plugin" / "authorized"
+# Percorso per il file di stato condiviso con l'estensione UI
+STATUS_FILE = Path(__file__).parent / "status.json"
 
-def update_antigravity_cockpit(model: str, remaining_fraction: float):
-    """Inietta i dati di quota nel file JSON di Antigravity Cockpit per vederli nella Status Bar."""
+def update_status_file(model: str, remaining_fraction: float, req: str, tok: str):
+    """Scrive lo stato in un file JSON locale per l'estensione della Status Bar."""
     try:
-        if not COCKPIT_DIR.exists():
-            return
-        
-        # Cerca il primo file JSON nella cartella authorized
-        files = list(COCKPIT_DIR.glob("*.json"))
-        if not files:
-            return
-        
-        file_path = files[0]
-        with open(file_path, "r") as f:
-            data = json.load(f)
-        
-        # Inietta o aggiorna il nostro modello custom
-        custom_model_id = "custom-mcp-llm"
-        if "models" not in data["payload"]:
-            data["payload"]["models"] = {}
-            
-        data["payload"]["models"][custom_model_id] = {
-            "displayName": f"MCP: {model}",
-            "quotaInfo": {
-                "remainingFraction": remaining_fraction,
-                "resetTime": "2026-12-31T23:59:59Z"
-            },
-            "model": "MODEL_CUSTOM_MCP",
-            "apiProvider": "API_PROVIDER_INTERNAL",
-            "modelProvider": "MODEL_PROVIDER_CUSTOM",
-            "supportsCumulativeContext": True
+        status_data = {
+            "model": model,
+            "fraction": remaining_fraction,
+            "requests": req,
+            "tokens": tok,
+            "updated_at": time.time()
         }
-        
-        data["updatedAt"] = int(time.time() * 1000)
-        
-        with open(file_path, "w") as f:
-            json.dump(data, f, indent=2)
-            
+        with open(STATUS_FILE, "w") as f:
+            json.dump(status_data, f)
     except Exception as e:
-        print(f"Errore aggiornamento Cockpit: {e}")
+        print(f"Errore aggiornamento file di stato: {e}")
 
 # Carica modello di default da env o usa un fallback
 DEFAULT_MODEL = os.environ.get("DEFAULT_MODEL", "groq/llama-3.3-70b-versatile")
@@ -198,12 +173,12 @@ async def call_llm(prompt: str, model: Optional[str] = None, system_prompt: Opti
         except:
             pass
 
-        # Aggiornamento stato globale per la risorsa e Cockpit
+        # Aggiornamento stato globale per la risorsa e file locale
         last_status["model"] = selected_model
         last_status["requests_remaining"] = remaining_req
         last_status["tokens_remaining"] = remaining_tok
         
-        update_antigravity_cockpit(selected_model, fraction)
+        update_status_file(selected_model, fraction, remaining_req, remaining_tok)
         
         footer = f"\n\n---\n*Modello: {selected_model}* | *Richieste residue: {remaining_req}* | *Token residui: {remaining_tok}*"
         return content + footer
@@ -227,4 +202,7 @@ async def list_available_models() -> str:
     )
 
 if __name__ == "__main__":
+    # Inizializza il file di stato con valori di default se non esiste
+    if not STATUS_FILE.exists():
+        update_status_file(DEFAULT_MODEL, 1.0, "N/A", "N/A")
     mcp.run()
