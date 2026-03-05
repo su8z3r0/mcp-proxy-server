@@ -7,7 +7,15 @@ Questo repository contiene un server MCP (Model Context Protocol) che funge da p
 - **Gestione Dinamica API Keys**: Strumenti integrati per aggiungere chiavi API direttamente dalla conversazione.
 - **Integrazione Nativa**: Configurato per essere eseguito come server MCP in Antigravity.
 
-## Installazione Locale
+## Installazione Automatica (Consigliata)
+Su un nuovo PC, basta clonare il repo ed eseguire lo script di setup:
+1. `git clone https://github.com/su8z3r0/mcp-proxy-server.git`
+2. `cd mcp-proxy-server`
+3. `python setup.py`
+
+Lo script creerà il `venv`, installerà le dipendenze e configurerà automaticamente Antigravity per te!
+
+## Installazione Manuale
 1. Assicurati di avere Python 3.10+ installato.
 2. Crea un ambiente virtuale: `python -m venv venv`
 3. Attiva l'ambiente e installa le dipendenze: `pip install mcp litellm python-dotenv`
