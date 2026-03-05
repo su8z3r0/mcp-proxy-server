@@ -12,6 +12,22 @@ load_dotenv(ENV_FILE)
 # Inizializza il server MCP
 mcp = FastMCP("External-LLM-Proxy")
 
+# Stato globale per monitoraggio quota
+last_status = {
+    "model": "Nessuno",
+    "requests_remaining": "N/A",
+    "tokens_remaining": "N/A"
+}
+
+@mcp.resource("mcp://quota/status")
+def get_quota_status() -> str:
+    """Ritorna lo stato dell'ultima quota rilevata."""
+    return (
+        f"Ultimo Modello: {last_status['model']}\n"
+        f"Richieste Residue: {last_status['requests_remaining']}\n"
+        f"Token Residui: {last_status['tokens_remaining']}"
+    )
+
 @mcp.tool()
 async def add_api_key(provider_env_name: str, api_key: str) -> str:
     """
@@ -81,10 +97,10 @@ async def call_llm(prompt: str, model: str = "gpt-4o-mini", system_prompt: Optio
         
         content = response.choices[0].message.content
         
-        # Estrazione info rate limit se disponibili (es. Groq)
-        headers = getattr(response, "_response_headers", {})
-        remaining_req = headers.get("x-ratelimit-remaining-requests", "N/A")
-        remaining_tok = headers.get("x-ratelimit-remaining-tokens", "N/A")
+        # Aggiornamento stato globale per la risorsa
+        last_status["model"] = model
+        last_status["requests_remaining"] = remaining_req
+        last_status["tokens_remaining"] = remaining_tok
         
         footer = f"\n\n---\n*Modello: {model}* | *Richieste residue: {remaining_req}* | *Token residui: {remaining_tok}*"
         return content + footer
