@@ -80,8 +80,22 @@ async def call_llm(prompt: str, model: str = "gpt-4o-mini", system_prompt: Optio
         )
         
         content = response.choices[0].message.content
-        footer = f"\n\n---\n*Risposta generata da: {model} (via MCP Proxy)*"
+        
+        # Estrazione info rate limit se disponibili (es. Groq)
+        headers = getattr(response, "_response_headers", {})
+        remaining_req = headers.get("x-ratelimit-remaining-requests", "N/A")
+        remaining_tok = headers.get("x-ratelimit-remaining-tokens", "N/A")
+        
+        footer = f"\n\n---\n*Modello: {model}* | *Richieste residue: {remaining_req}* | *Token residui: {remaining_tok}*"
         return content + footer
+
+    except litellm.exceptions.RateLimitError as e:
+        return (
+            f"⚠️ **Rate Limit Raggiunto** per il modello `{model}`.\n\n"
+            f"Dettagli: {str(e)}\n\n"
+            "Consiglio: Attendi qualche secondo o prova a usare un altro provider (es. Gemini o OpenAI) "
+            "tramite il comando `call_llm` con un altro prefisso."
+        )
     except Exception as e:
         return f"Errore durante la chiamata al modello {model}: {str(e)}"
 
