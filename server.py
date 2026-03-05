@@ -79,7 +79,9 @@ async def call_llm(prompt: str, model: str = "gpt-4o-mini", system_prompt: Optio
             messages=messages,
         )
         
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        footer = f"\n\n---\n*Risposta generata da: {model} (via MCP Proxy)*"
+        return content + footer
     except Exception as e:
         return f"Errore durante la chiamata al modello {model}: {str(e)}"
 
