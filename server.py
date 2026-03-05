@@ -12,9 +12,12 @@ load_dotenv(ENV_FILE)
 # Inizializza il server MCP
 mcp = FastMCP("External-LLM-Proxy")
 
+# Carica modello di default da env o usa un fallback
+DEFAULT_MODEL = os.environ.get("DEFAULT_MODEL", "groq/llama-3.3-70b-versatile")
+
 # Stato globale per monitoraggio quota
 last_status = {
-    "model": "Nessuno",
+    "model": DEFAULT_MODEL,
     "requests_remaining": "N/A",
     "tokens_remaining": "N/A"
 }
@@ -75,15 +78,47 @@ async def get_config_status() -> str:
     return status
 
 @mcp.tool()
-async def call_llm(prompt: str, model: str = "gpt-4o-mini", system_prompt: Optional[str] = None) -> str:
+async def set_default_model(model_name: str) -> str:
+    """Imposta il modello di default da usare quando non ne viene specificato uno."""
+    global DEFAULT_MODEL
+    try:
+        # Aggiorna il file .env
+        lines = []
+        if os.path.exists(ENV_FILE):
+            with open(ENV_FILE, "r") as f:
+                lines = f.readlines()
+        
+        found = False
+        new_lines = []
+        for line in lines:
+            if line.strip().startswith("DEFAULT_MODEL="):
+                new_lines.append(f"DEFAULT_MODEL={model_name}\n")
+                found = True
+            else:
+                new_lines.append(line)
+        
+        if not found:
+            new_lines.append(f"DEFAULT_MODEL={model_name}\n")
+            
+        with open(ENV_FILE, "w") as f:
+            f.writelines(new_lines)
+            
+        DEFAULT_MODEL = model_name
+        return f"Modello di default impostato su: {model_name}"
+    except Exception as e:
+        return f"Errore nell'impostazione del modello: {str(e)}"
+
+@mcp.tool()
+async def call_llm(prompt: str, model: Optional[str] = None, system_prompt: Optional[str] = None) -> str:
     """
     Effettua una chiamata a un LLM esterno tramite LiteLLM.
     
     Args:
         prompt: Il messaggio da inviare al modello.
-        model: Il nome del modello (es. 'gpt-4o', 'groq/llama3-70b-8192', 'gemini/gemini-1.5-flash').
+        model: Opzionale. Il nome del modello. Se omesso, usa quello di default.
         system_prompt: Messaggio di sistema opzionale.
     """
+    selected_model = model or DEFAULT_MODEL
     try:
         messages = []
         if system_prompt:
@@ -91,14 +126,14 @@ async def call_llm(prompt: str, model: str = "gpt-4o-mini", system_prompt: Optio
         messages.append({"role": "user", "content": prompt})
 
         response = await litellm.acompletion(
-            model=model,
+            model=selected_model,
             messages=messages,
         )
         
         content = response.choices[0].message.content
         
         # Aggiornamento stato globale per la risorsa
-        last_status["model"] = model
+        last_status["model"] = selected_model
         last_status["requests_remaining"] = remaining_req
         last_status["tokens_remaining"] = remaining_tok
         
